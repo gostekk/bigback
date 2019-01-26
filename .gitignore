@@ -24,3 +24,6 @@ yarn-error.log*
 
 .lock
 package-lock.json
+
+.gitignore
+config.js
