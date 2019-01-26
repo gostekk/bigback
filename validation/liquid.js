@@ -9,17 +9,9 @@ module.exports = function validateLiquidInput(data) {
   data.liquidType = !isEmpty(data.liquidType) ? data.liquidType : "";
   data.date = !isEmpty(data.date) ? data.date : "";
 
-  // if(Validator.isInt(data.amount)) {
-  //   errors.amount = "Ilość musi być wartością liczbową"
-  // }
-
   if (Validator.isEmpty(data.amount)) {
     errors.amount = "Amount is required";
   }
-
-  // if(Validator.isInt(data.mileage)) {
-  //   errors.mileage = "Przebieg musi być wartością liczbową"
-  // }
 
   if (Validator.isEmpty(data.mileage)) {
     errors.mileage = "Mileage is required";
