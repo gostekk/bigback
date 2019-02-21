@@ -38,41 +38,42 @@ router.get("/test", (req, res) => res.json({ msg: "NPCS works" }));
 
 // @route   POST api/npcs
 // @desc    Add new character to database
-router.options("/passwd", cors(corsOptions))
-router.post("/passwd", cors(corsOptions), async (req, res) => {
-  const check = bcrypt.compare(req.body.password, passwd);
-  if (check) {
-    res.status(200);
-  } else {
-    res.status(401).json({ error: 'Nieprawidłowe hasło!'})
+router.options("/auth", cors(corsOptions))
+router.post("/auth", cors(corsOptions), async (req, res, next) => {
+  try {
+    const password = req.body.password || '';
+    const check = bcrypt.compareSync(password, passwd);
+    if (check) {
+      res.status(200).send(true);
+    } else {
+      res.status(401).json({ error: 'Nieprawidłowe hasło!'})
+    }
+  } catch (e) {
+    next(e);
   }
 });
 
 // @route   GET api/npcs
 // @desc    Get all characters from database
-router.get('/', cors(corsOptions), (req, res) => {
-  NPC.find()
-    .sort({ sessionDate: -1 })
-    .then(characters => {
-      if(!characters) {
-        return res.status(404).json({ errors: "No characters in database added yet"});
-      }
-
-      return res.status(200).json(characters);
-    });
+router.get('/', cors(corsOptions), async (req, res, next) => {
+  try {
+    const characters = await NPC.find().sort({ sessionDate: -1 })
+    res.json(characters);
+  } catch(e) {
+    next(e)
+  }
 });
 
 // @route   GET api/npcs/:id
 // @desc    Get character from database
-router.get('/:id', cors(corsOptions), (req, res) => {
-  NPC.findOne({ _id: req.params.id})
-    .then(character => {
-      if(!character) {
-        return res.status(404).json({ errors: "No character with that id"});
-      }
-
-      return res.status(200).json(character);
-    });
+router.get('/:id', cors(corsOptions), async (req, res, next) => {
+  try {
+    console.log(req.params.id);
+    const character = await NPC.findOne({ _id: req.params.id })
+    res.json(character);
+  } catch(e) {
+    next(e)
+  }
 });
 
 
@@ -80,7 +81,7 @@ router.get('/:id', cors(corsOptions), (req, res) => {
 // @desc    Add new character to database
 router.options("/", cors(corsOptions))
 router.post("/", cors(corsOptions), (req, res) => {
-  upload(req, res, async function (err) {
+  upload(req, res, function (err) {
     if (err instanceof multer.MulterError) {
       console.log(err);
     } else if (err) {
@@ -91,6 +92,7 @@ router.post("/", cors(corsOptions), (req, res) => {
     if (!isValid) {
       return res.status(400).json(errors);
     }
+    console.log(req.file)
 
     const newNPC = new NPC({
       name: req.body.name,
@@ -113,7 +115,7 @@ router.post("/", cors(corsOptions), (req, res) => {
       imgFile: req.file ? req.file.filename : undefined,
     });
   
-    const characters = await newNPC.save();
+    const characters = newNPC.save();
     res.json(characters);
   });
 });
@@ -122,52 +124,51 @@ router.post("/", cors(corsOptions), (req, res) => {
 // @desc    Edit existing character
 router.options("/edit/:id", cors(corsOptions))
 router.post('/edit/:id', cors(corsOptions), (req, res) => {
-  upload(req, res, function (err) {
+  upload(req, res, async function (err) {
+    console.log('req', req.params.id);
     if (err instanceof multer.MulterError) {
       console.log(err);
     } else if (err) {
       console.log(err);
     }
+
     const { errors, isValid } = validateNPCInput(req.body);
 
     if (!isValid) {
       return res.status(400).json(errors);
     }
 
-    NPC.findOne({ _id: req.params.id })
-      .then(characters => {
-          if(characters) {
-          NPC.findOneAndUpdate(
-            { _id: req.params.id },
-            { 
-              name: req.body.name,
-              race: req.body.race,
-              sex: req.body.sex,
-              job: req.body.job,
-              specialSign: req.body.specialSign,
-              appearance: req.body.appearance,
-              abilityHigh: req.body.abilityHigh,
-              abilityLow: req.body.abilityLow,
-              profficiency: req.body.profficiency,
-              languages: req.body.languages,
-              talent: req.body.talent,
-              manners: req.body.manners,
-              conversation: req.body.conversation,
-              ideal: req.body.ideal,
-              bond: req.body.bond,
-              flaw: req.body.flaw,
-              kin: req.body.kin,
-              imgFile: req.file.filename ? req.file.filename : undefined,
-            },
-            { new: false }
-            )
-            .then((character1 => res.status(200).json(character1)))
-            .catch(err => res.status(400).json(err));
-        } else {
-          res.status(404).json({ error: 'Brak postaci o podanym id'});
-        }
-      })
-      .catch(err => res.status(400).json(err));
+    try {
+      const character = await NPC.findOneAndUpdate(
+        { _id: req.params.id },
+        { 
+          name: req.body.name,
+          race: req.body.race,
+          sex: req.body.sex,
+          job: req.body.job,
+          specialSign: req.body.specialSign,
+          appearance: req.body.appearance,
+          abilityHigh: req.body.abilityHigh,
+          abilityLow: req.body.abilityLow,
+          profficiency: req.body.profficiency,
+          languages: req.body.languages,
+          talent: req.body.talent,
+          manners: req.body.manners,
+          conversation: req.body.conversation,
+          ideal: req.body.ideal,
+          bond: req.body.bond,
+          flaw: req.body.flaw,
+          kin: req.body.kin,
+          imgFile: req.file ? req.file.filename : undefined,
+        },
+        { new: false }
+        );
+      console.log(character);
+      res.status(200).json(character);
+    } catch (e) {
+      console.log(e);
+      res.status(404).json({ error: 'Nie znaleziono postaci o podanym numerze id' });
+    }
   });
 });
 

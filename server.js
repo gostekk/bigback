@@ -11,6 +11,7 @@ const npcs = require("./routes/api/npcs");
 
 // REST Show
 const liesShow = require("./routes/show/lies");
+const npcsShow = require("./routes/show/npcs");
 
 const app = express();
 
@@ -45,6 +46,7 @@ app.use("/api/liquid", liquid);
 app.use("/api/lies", lies);
 app.use("/api/npcs", npcs);
 app.use("/show/lies", liesShow);
+app.use("/show/npcs", npcsShow);
 
 app.listen(config.port, () =>
   console.log(`Server running on port ${config.port}`)
