@@ -58,6 +58,10 @@ const NPCSchema = new Schema({
   kin: {
     type: String,
   },
+  owner: {
+    type: Schema.Types.ObjectId,
+    ref: 'users',
+  },
   createdAt: {
     type: Date,
     default: Date.now

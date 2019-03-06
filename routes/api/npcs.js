@@ -1,7 +1,6 @@
 const express = require("express");
 const cors = require('cors');
 const multer = require('multer');
-const bcrypt = require('bcryptjs');
 
 const storage = multer.diskStorage({
   destination: '../public/npcs/',
@@ -39,10 +38,18 @@ router.get("/test", (req, res) => res.json({ msg: "NPCS works" }));
 
 // @route   GET api/npcs
 // @desc    Get all characters from database
+router.options('/', cors(corsOptions))
 router.get('/', cors(corsOptions), passport.authenticate('jwt', { session: false}), async (req, res, next) => {
   try {
-    const characters = await NPC.find().sort({ sessionDate: -1 })
-    res.json(characters);
+    if (req.user.permissions.npcs.admin) {
+      const characters = await NPC.find().sort({ sessionDate: -1 })
+      res.status(200).json(characters);
+    } else if (req.user.permissions.npcs.login) {
+      const characters = await NPC.find({ owner: req.user._id }).sort({ sessionDate: -1 })
+      res.status(200).json(characters);
+    } else {
+      res.status(401).json({ errors: { error: 'Brak uprawnień!' }});
+    }
   } catch(e) {
     next(e)
   }
@@ -50,11 +57,15 @@ router.get('/', cors(corsOptions), passport.authenticate('jwt', { session: false
 
 // @route   GET api/npcs/:id
 // @desc    Get character from database
-router.get('/:id', cors(corsOptions), async (req, res, next) => {
+router.options('/:id', cors(corsOptions))
+router.get('/:id', cors(corsOptions), passport.authenticate('jwt', { session: false}), async (req, res, next) => {
   try {
-    console.log(req.params.id);
-    const character = await NPC.findOne({ _id: req.params.id })
-    res.json(character);
+    if (req.user.permissions.npcs.login) {
+      const character = await NPC.findOne({ _id: req.params.id })
+      res.status(200).json(character);
+    } else {
+      res.status(401).json({ errors: { error: 'Brak uprawnień!' }});
+    }
   } catch(e) {
     next(e)
   }
@@ -63,108 +74,131 @@ router.get('/:id', cors(corsOptions), async (req, res, next) => {
 
 // @route   POST api/npcs
 // @desc    Add new character to database
-router.options("/", cors(corsOptions))
-router.post("/", cors(corsOptions), (req, res) => {
-  upload(req, res, function (err) {
-    if (err instanceof multer.MulterError) {
-      console.log(err);
-    } else if (err) {
-      console.log(err);
-    }
-    const { errors, isValid } = validateNPCInput(req.body);
-    
-    if (!isValid) {
-      return res.status(400).json(errors);
-    }
-    console.log(req.file)
+router.options('/', cors(corsOptions))
+router.post('/', cors(corsOptions), passport.authenticate('jwt', { session: false}), (req, res) => {
+  if (req.user.permissions.npcs.login) {
+    upload(req, res, function (err) {
+      if (err instanceof multer.MulterError) {
+        console.log(err);
+      } else if (err) {
+        console.log(err);
+      }
+      const { errors, isValid } = validateNPCInput(req.body);
+      
+      if (!isValid) {
+        return res.status(400).json(errors);
+      }
+      console.log(req.file)
 
-    const newNPC = new NPC({
-      name: req.body.name,
-      race: req.body.race,
-      sex: req.body.sex,
-      job: req.body.job,
-      specialSign: req.body.specialSign,
-      appearance: req.body.appearance,
-      abilityHigh: req.body.abilityHigh,
-      abilityLow: req.body.abilityLow,
-      profficiency: req.body.profficiency,
-      languages: req.body.languages,
-      talent: req.body.talent,
-      manners: req.body.manners,
-      conversation: req.body.conversation,
-      ideal: req.body.ideal,
-      bond: req.body.bond,
-      flaw: req.body.flaw,
-      kin: req.body.kin,
-      imgFile: req.file ? req.file.filename : undefined,
+      const newNPC = new NPC({
+        name: req.body.name,
+        race: req.body.race,
+        sex: req.body.sex,
+        job: req.body.job,
+        specialSign: req.body.specialSign,
+        appearance: req.body.appearance,
+        abilityHigh: req.body.abilityHigh,
+        abilityLow: req.body.abilityLow,
+        profficiency: req.body.profficiency,
+        languages: req.body.languages,
+        talent: req.body.talent,
+        manners: req.body.manners,
+        conversation: req.body.conversation,
+        ideal: req.body.ideal,
+        bond: req.body.bond,
+        flaw: req.body.flaw,
+        kin: req.body.kin,
+        imgFile: req.file ? req.file.filename : undefined,
+        owner: req.user._id,
+      });
+    
+      const characters = newNPC.save();
+      res.json(characters);
     });
-  
-    const characters = newNPC.save();
-    res.json(characters);
-  });
+  } else {
+    res.status(401).json({ errors: { error: 'Brak uprawnień!' }});
+  }
 });
 
 // @route   POST api/npcs/edit/:id
 // @desc    Edit existing character
-router.options("/edit/:id", cors(corsOptions))
-router.post('/edit/:id', cors(corsOptions), (req, res) => {
-  upload(req, res, async function (err) {
-    console.log('req', req.params.id);
-    if (err instanceof multer.MulterError) {
-      console.log(err);
-    } else if (err) {
-      console.log(err);
-    }
+router.options('/edit/:id', cors(corsOptions))
+router.post('/edit/:id', cors(corsOptions), passport.authenticate('jwt', { session: false}), (req, res) => {
+  if (req.user.permissions.npcs.login) {
+    upload(req, res, async function (err) {
+      console.log('req', req.params.id);
+      if (err instanceof multer.MulterError) {
+        console.log(err);
+      } else if (err) {
+        console.log(err);
+      }
 
-    const { errors, isValid } = validateNPCInput(req.body);
+      const { errors, isValid } = validateNPCInput(req.body);
 
-    if (!isValid) {
-      return res.status(400).json(errors);
-    }
+      if (!isValid) {
+        return res.status(400).json(errors);
+      }
 
-    try {
-      const character = await NPC.findOneAndUpdate(
-        { _id: req.params.id },
-        { 
-          name: req.body.name,
-          race: req.body.race,
-          sex: req.body.sex,
-          job: req.body.job,
-          specialSign: req.body.specialSign,
-          appearance: req.body.appearance,
-          abilityHigh: req.body.abilityHigh,
-          abilityLow: req.body.abilityLow,
-          profficiency: req.body.profficiency,
-          languages: req.body.languages,
-          talent: req.body.talent,
-          manners: req.body.manners,
-          conversation: req.body.conversation,
-          ideal: req.body.ideal,
-          bond: req.body.bond,
-          flaw: req.body.flaw,
-          kin: req.body.kin,
-          imgFile: req.file ? req.file.filename : undefined,
-        },
-        { new: false }
-        );
-      console.log(character);
-      res.status(200).json(character);
-    } catch (e) {
-      console.log(e);
-      res.status(404).json({ error: 'Nie znaleziono postaci o podanym numerze id' });
-    }
-  });
+      try {
+        const result = await NPC.findOne({ _id: req.params.id });
+        if(result.owner.equals(req.user._id) || req.user.permissions.npcs.admin) {
+          const character = await NPC.findOneAndUpdate(
+            { _id: req.params.id },
+            { 
+              name: req.body.name,
+              race: req.body.race,
+              sex: req.body.sex,
+              job: req.body.job,
+              specialSign: req.body.specialSign,
+              appearance: req.body.appearance,
+              abilityHigh: req.body.abilityHigh,
+              abilityLow: req.body.abilityLow,
+              profficiency: req.body.profficiency,
+              languages: req.body.languages,
+              talent: req.body.talent,
+              manners: req.body.manners,
+              conversation: req.body.conversation,
+              ideal: req.body.ideal,
+              bond: req.body.bond,
+              flaw: req.body.flaw,
+              kin: req.body.kin,
+              imgFile: req.file ? req.file.filename : undefined,
+            },
+            { new: false }
+          );
+          res.status(200).json(character);
+        } else {
+          res.status(401).json({ errors: { error: 'Brak uprawnień!' }});
+        }
+      } catch (e) {
+        console.log(e);
+        res.status(404).json({ error: 'Nie znaleziono postaci o podanym numerze id' });
+      }
+    });
+  } else {
+    res.status(401).json({ errors: { error: 'Brak uprawnień!' }});
+  }
 });
 
 // @route   POST api/npcs/delete
 // @desc    Delete character from database
-router.options("/delete", cors(corsOptions))
-router.post("/delete", cors(corsOptions), (req, res) => {
-  const characterId = req.body._id;
-  // res.status(401).json({ msg: 'Brak odpowiednich uprawnień '})
-  NPC.deleteOne({ _id: characterId })
-    .then(() => res.status(200).json({ msg: 'success' }))
-    .catch(err => res.status(400).json({ msg: err }));
+router.options('/delete', cors(corsOptions))
+router.post('/delete', cors(corsOptions), passport.authenticate('jwt', { session: false}), async (req, res, next) => {
+  try {
+    if (req.user.permissions.npcs.login) {
+      const result = await NPC.findOne({ _id: req.body._id });
+      if(result.owner.equals(req.user._id) || req.user.permissions.npcs.admin) {
+        result.remove();
+        res.status(200).json({ result })
+      } else {
+        res.status(401).json({ errors: { error: 'Brak uprawnień!' }});
+      }
+    } else {
+      res.status(401).json({ errors: { error: 'Brak uprawnień!' }});
+    }
+  } catch (e) {
+    next(e);
+  }
 });
 
 module.exports = router;

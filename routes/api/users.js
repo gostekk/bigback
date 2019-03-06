@@ -11,6 +11,7 @@ require('../../config/passport')(passport);
 
 // CORS
 const whitelist = ['http://localhost:3000', 'http://127.0.0.1:3031', 'http://npcs.gostekk.pl', 'http://lies.gostekk.pl']
+// const whitelist = ['http://npcs.gostekk.pl', 'http://lies.gostekk.pl']
 const corsOptions = {
   origin: function (origin, callback) {
     if (whitelist.indexOf(origin) !== -1) {
