@@ -1,10 +1,14 @@
 const express = require("express");
 const mongoose = require("mongoose");
-const logger = require('morgan');
+const logger = require("morgan");
 const bodyParser = require("body-parser");
 const config = require("./config");
+const passport = require("passport");
 
 // REST Api
+const auth = require("./routes/api/auth");
+const users = require("./routes/api/users");
+
 const liquid = require("./routes/api/liquid");
 const lies = require("./routes/api/lies");
 const npcs = require("./routes/api/npcs");
@@ -31,6 +35,11 @@ mongoose
   .then(() => console.log("MongoDB Connected"))
   .catch(err => console.log(err));
 
+// Passport middleware
+app.use(passport.initialize());
+// Passport config
+require("./config/passport")(passport);
+
 // error handler
 app.use(function(err, req, res, next) {
   // set locals, only providing error in development
@@ -42,6 +51,9 @@ app.use(function(err, req, res, next) {
 });
 
 // Routes
+app.use("/api/auth", auth);
+app.use("/api/users", users);
+
 app.use("/api/liquid", liquid);
 app.use("/api/lies", lies);
 app.use("/api/npcs", npcs);

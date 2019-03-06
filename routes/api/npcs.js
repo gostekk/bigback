@@ -3,8 +3,6 @@ const cors = require('cors');
 const multer = require('multer');
 const bcrypt = require('bcryptjs');
 
-const passwd = '$2a$10$lIzPVqTbNMflAYHb1mNtpeasYA9fPQy.IA7BVKwAyASuy4fv7Rlyi';
-
 const storage = multer.diskStorage({
   destination: '../public/npcs/',
   filename(req, file, cb) {
@@ -17,7 +15,6 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage }).single('file');
-
 const router = express.Router();
 
 // Input Validation
@@ -25,6 +22,10 @@ const validateNPCInput = require("../../validation/npcs");
 
 // NPC model
 const NPC = require("../../models/NPC");
+
+// Passport
+const passport = require('passport');
+require('../../config/passport')(passport);
 
 // CORS
 const corsOptions = {
@@ -36,26 +37,9 @@ const corsOptions = {
 // @desc    Test npcs route
 router.get("/test", (req, res) => res.json({ msg: "NPCS works" }));
 
-// @route   POST api/npcs
-// @desc    Add new character to database
-router.options("/auth", cors(corsOptions))
-router.post("/auth", cors(corsOptions), async (req, res, next) => {
-  try {
-    const password = req.body.password || '';
-    const check = bcrypt.compareSync(password, passwd);
-    if (check) {
-      res.status(200).send(true);
-    } else {
-      res.status(401).json({ error: 'Nieprawidłowe hasło!'})
-    }
-  } catch (e) {
-    next(e);
-  }
-});
-
 // @route   GET api/npcs
 // @desc    Get all characters from database
-router.get('/', cors(corsOptions), async (req, res, next) => {
+router.get('/', cors(corsOptions), passport.authenticate('jwt', { session: false}), async (req, res, next) => {
   try {
     const characters = await NPC.find().sort({ sessionDate: -1 })
     res.json(characters);
