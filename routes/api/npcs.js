@@ -22,6 +22,7 @@ const validateNPCInput = require("../../validation/npcs");
 // NPC model
 const NPC = require("../../models/NPC");
 const NPCcomment = require("../../models/NPCcomment");
+const User = require("../../models/User");
 
 // Passport
 const passport = require('passport');
@@ -46,13 +47,29 @@ router.get('/', cors(corsOptions), passport.authenticate('jwt', { session: false
       const characters = await NPC.find().sort({ sessionDate: -1 })
       res.status(200).json(characters);
     } else if (req.user.permissions.npcs.login) {
-      const characters = await NPC.find({ $or: [ { owner: req.user._id }, {visible:{$elemMatch:{$eq:req.user._id}}}]}).sort({ sessionDate: -1 });
+      const characters = await NPC.find({ $or: [ { owner: req.user._id }, {visible:{$elemMatch:{$eq:req.user._id}}}]}).populate('visible', '_id username').sort({ sessionDate: -1 });
       res.status(200).json(characters);
     } else {
       res.status(401).json({ errors: { error: 'Brak uprawnień!' }});
     }
   } catch(e) {
     next(e)
+  }
+});
+
+// @route GET api/npcs/users
+// @desc Get users
+router.options("/users", cors(corsOptions))
+router.get("/users", cors(corsOptions), passport.authenticate('jwt', { session: false}), async (req, res, next) => {
+  try {
+    if (req.user.permissions.npcs.login) {
+      const users = await User.find({ 'permissions.npcs.login': true }).select({ _id: 1, username: 1 }).sort({ username: 1 });
+      res.status(200).json(users);
+    } else {
+      res.status(401).json({ errors: { error: 'Brak uprawnień!' }});
+    }
+  } catch (e) {
+    next(e);
   }
 });
 
@@ -197,6 +214,36 @@ router.post('/delete', cors(corsOptions), passport.authenticate('jwt', { session
       res.status(401).json({ errors: { error: 'Brak uprawnień!' }});
     }
   } catch (e) {
+    next(e);
+  }
+});
+
+// @route   POST api/npcs/visible
+// @desc    Change users who can view character
+router.options('/visible', cors(corsOptions))
+router.post('/visible', cors(corsOptions), passport.authenticate('jwt', { session: false}), async (req, res, next) => {
+  try {
+    if (req.user.permissions.npcs.login) {
+      const result = await NPC.findOne({ _id: req.body.npcId });
+      if(result.owner.equals(req.user._id) || req.user.permissions.npcs.admin) {
+        const character = await NPC.findOneAndUpdate(
+          { _id: req.body.npcId },
+          {
+            visible: req.body.users,
+          },
+          { new: false }
+        );
+        character.visible = req.body.users;
+        res.status(200).json(character);
+      } else {
+        res.status(401).json({ errors: { error: 'Brak uprawnień!' }});
+      }
+      
+    } else {
+      res.status(401).json({ errors: { error: 'Brak uprawnień!' }});
+    }
+  } catch (e) {
+    res.status(404).json({ error: 'Nie znaleziono postaci o podanym numerze id' });
     next(e);
   }
 });

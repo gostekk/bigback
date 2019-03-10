@@ -62,6 +62,10 @@ const NPCSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: 'users',
   },
+  visible: [{
+    type: [Schema.Types.ObjectId],
+    ref: 'users',
+  }],
   createdAt: {
     type: Date,
     default: Date.now
