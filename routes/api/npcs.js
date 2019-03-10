@@ -21,6 +21,7 @@ const validateNPCInput = require("../../validation/npcs");
 
 // NPC model
 const NPC = require("../../models/NPC");
+const NPCcomment = require("../../models/NPCcomment");
 
 // Passport
 const passport = require('passport');
@@ -70,7 +71,6 @@ router.get('/:id', cors(corsOptions), passport.authenticate('jwt', { session: fa
     next(e)
   }
 });
-
 
 // @route   POST api/npcs
 // @desc    Add new character to database
@@ -198,6 +198,64 @@ router.post('/delete', cors(corsOptions), passport.authenticate('jwt', { session
     }
   } catch (e) {
     next(e);
+  }
+});
+
+// @route   POST api/npcs/owner
+// @desc    Change owner of the character
+router.options('/owner', cors(corsOptions))
+router.post('/owner', cors(corsOptions), passport.authenticate('jwt', { session: false}), async (req, res, next) => {
+  if (req.user.permissions.npcs.admin) {
+    try {
+      const character = await NPC.findOneAndUpdate(
+        { _id: req.body.npcId },
+        {
+          owner: req.user._id,
+        },
+        { new: false }
+      );
+      character.owner = req.user._id;
+      res.status(200).json(character);
+    } catch (e) {
+      res.status(404).json({ error: 'Nie znaleziono postaci o podanym numerze id' });
+      next(e);
+    }
+  } else {
+    res.status(401).json({ errors: { error: 'Brak uprawnień!' }});
+  }
+});
+
+// @route   GET api/npcs/comment
+// @desc    Get comment from database
+router.options('/comment/:id', cors(corsOptions))
+router.get('/comment/:id', cors(corsOptions), passport.authenticate('jwt', { session: false}), async (req, res, next) => {
+  try {
+    if (req.user.permissions.npcs.login) {
+      const comment = await NPCcomment.findOne({ npcId: req.params.id, userId: req.user._id }).sort({ createdAt: -1 })
+      res.status(200).json(comment);
+    } else {
+      res.status(401).json({ errors: { error: 'Brak uprawnień!' }});
+    }
+  } catch(e) {
+    next(e)
+  }
+});
+
+// @route   POST api/npcs/comment
+// @desc    Delete character from database
+router.options('/comment', cors(corsOptions))
+router.post('/comment', cors(corsOptions), passport.authenticate('jwt', { session: false}), async (req, res, next) => {
+  if (req.user.permissions.npcs.login) {
+    const newNPCcomment = new NPCcomment({
+      comment: req.body.comment,
+      userId: req.body.userId,
+      npcId: req.body.npcId,
+    });
+  
+    const comment = newNPCcomment.save();
+    res.status(200).json(comment);
+    } else {
+    res.status(401).json({ errors: { error: 'Brak uprawnień!' }});
   }
 });
 
