@@ -46,7 +46,7 @@ router.get('/', cors(corsOptions), passport.authenticate('jwt', { session: false
       const characters = await NPC.find().sort({ sessionDate: -1 })
       res.status(200).json(characters);
     } else if (req.user.permissions.npcs.login) {
-      const characters = await NPC.find({ owner: req.user._id }).sort({ sessionDate: -1 })
+      const characters = await NPC.find({ $or: [ { owner: req.user._id }, {visible:{$elemMatch:{$eq:req.user._id}}}]}).sort({ sessionDate: -1 });
       res.status(200).json(characters);
     } else {
       res.status(401).json({ errors: { error: 'Brak uprawnień!' }});
